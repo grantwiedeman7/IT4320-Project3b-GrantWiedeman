@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Stock Visualizer (Alpha Vantage)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="bg-light">
+    <div class="container py-4">
+      <h1 class="mb-3">Stock Visualizer (Alpha Vantage)</h1>
+
+      <form method="post" class="mb-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-6">
+            <label for="symbol_input" class="form-label">Search symbol or pick popular:</label>
+            <input id="symbol_input" name="symbol_text" list="sym_list" class="form-control" placeholder="Type company or symbol (eg. Apple, AAPL)">
+            <datalist id="sym_list">
+              {% for s in symbols %}
+                <option value="{{ s['1. symbol'] }}">{{ s['2. name'] }}</option>
+              {% endfor %}
+            </datalist>
+            <small class="text-muted">As you type, suggestions will come from Alpha Vantage (rate-limited).</small>
+          </div>
+
+          <div class="col-md-3">
+            <label for="symbol_select" class="form-label">Or choose a popular symbol</label>
+            <select id="symbol_select" name="symbol" class="form-select">
+              <option value="">-- choose --</option>
+              {% for s in symbols %}
+                <option value="{{ s['1. symbol'] }}" {% if selected_symbol==s['1. symbol'] %}selected{% endif %}>{{ s['1. symbol'] }} - {{ s['2. name'] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <button class="btn btn-primary w-100" type="submit">Get Chart</button>
+          </div>
+        </div>
+      </form>
+
+      {% if error %}
+        <div class="alert alert-warning">Error: {{ error }}</div>
+      {% endif %}
+
+      {% if chart_url %}
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Chart</h5>
+            <img src="{{ chart_url }}" class="img-fluid" alt="chart">
+          </div>
+        </div>
+      {% else %}
+        <div class="alert alert-secondary">Submit a symbol to generate a chart.</div>
+      {% endif %}
+    </div>
+
+    <script>
+      const input = document.getElementById('symbol_input');
+      const datalist = document.getElementById('sym_list');
+      let timer = null;
+      input.addEventListener('input', function(e){
+        const q = input.value.trim();
+        clearTimeout(timer);
+        if(q.length < 1) return;
+        timer = setTimeout(() => {
+          fetch(`/search_symbols?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(list => {
+              datalist.innerHTML = '';
+              list.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.symbol + " - " + item.name;
+                datalist.appendChild(opt);
+              });
+            }).catch(err => {
+              console.warn("symbol search failed", err);
+            });
+        }, 350);
+      });
+    </script>
+  </body>
+</html>
